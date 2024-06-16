@@ -17,8 +17,8 @@ You can use these via cdn, but for production it is recomended to download mini-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.2/split.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js"></script>
 
-<link rel="stylesheet" href="mini-editor.css">
-<script src="mini-editor.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Tezumie/aijs-mini-editor@latest/mini-editor.css">
+<script src="https://cdn.jsdelivr.net/gh/Tezumie/aijs-mini-editor@latest/mini-editor.js"></script>
 ```
 
 Add a container for each editor you want to include:
