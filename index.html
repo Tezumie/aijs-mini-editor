@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Editor Example</title>
+  <link rel="stylesheet" href="mini-editor.css">
+  <style>
+    body,
+    html {
+      margin: 0px;
+      padding: 0px;
+    }
+
+    .editor-container {
+      border: 1px solid #3c3d3e;
+      margin: 5px;
+      padding: 0px;
+      height: 400px;
+      overflow: hidden;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.2/split.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js"></script>
+  <script src="mini-editor.js"></script>
+</head>
+
+<body>
+  <!-- first editor -->
+  <div id="editor1" class="editor-container">
+    <script type="text/javascript" id="script1">
+function setup() {
+  createCanvas(400, 400);
+}
+
+function draw() {
+  background(220);
+  rect(150, 150, 100, 100);
+}
+    </script>
+  </div>
+
+  <!-- second editor -->
+  <div id="editor2" class="editor-container"></div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const editor1 = new MiniEditor({
+        containerId: 'editor1',
+        scriptId: 'script1',
+        autoRun: true,
+        autoRefresh: true,
+        showStopButton: true,
+        showPlayButton: true,
+        image: 'https://aijs.io/images/newLogo.png',
+        title: 'Draw a rectangle',
+        dependencies: [
+          "https://q5js.org/q5.js",
+        ],
+        options: {
+          theme: 'vs-dark',
+          fontSize: 14,
+          lineNumbersMinChars: 3,
+          glyphMargin: false,
+          minimap: {
+            enabled: false
+          },
+          scrollbar: {
+            verticalScrollbarSize: 12,
+            horizontalScrollbarSize: 12
+          }
+        }
+      });
+
+      const editor2 = new MiniEditor({
+        containerId: 'editor2',
+        autoRun: true,
+        autoRefresh: true,
+        showStopButton: false,
+        showPlayButton: false,
+        image: 'https://p5play.org/assets/p5play_logo.svg',
+        title: 'Tumbler',
+        dependencies: [
+          "https://q5js.org/q5.js",
+          "https://p5play.org/v3/planck.min.js",
+          "https://p5play.org/v3/p5play.js",
+        ],
+        aijsProject: {
+          userId: 'tWpjOlmRQEP73aDzO4Fp8D3txBu1',
+          projectName: 'Tumbler',
+          fileName: 'mySketch.js'
+        },
+        options: {
+          theme: 'vs-dark',
+          fontSize: 12,
+          lineNumbersMinChars: 3,
+          glyphMargin: false,
+          minimap: {
+            enabled: false
+          }
+        }
+      });
+    });
+
+  </script>
+</body>
+
+</html>
