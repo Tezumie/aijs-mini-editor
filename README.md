@@ -5,6 +5,7 @@ The Mini Editor Library is a lightweight and powerful tool for integrating code 
 
 The editor works by running a single JS file and it automatically creates the CSS and HTML. You can add/modify custom dependencies to your project, by defualt the editor use [Q5.js](https://github.com/quinton-ashley/q5.js).
 
+You can see a full example running in AIJS browser code editor [here](https://aijs.io/editor?user=Tezumie&project=aijs-mini-editor-example).
 ##
 
 Include the necessary CSS and JavaScript files in your HTML:
