@@ -1,5 +1,9 @@
 // Function to extract script content by ID
 const getScriptContent = (scriptId) => {
+  if (typeof scriptId === 'string' && scriptId.trim().startsWith('function')) {
+    return scriptId.trimStart();
+  }
+  
   const scriptElement = document.getElementById(scriptId);
   return scriptElement ? scriptElement.innerText.trimStart() : '';
 };
