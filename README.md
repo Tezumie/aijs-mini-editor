@@ -50,7 +50,7 @@ You can also add a script tag for your javascript directly within the editor con
 
 `containerId` (string): The ID of the HTML element where the editor will be instantiated.
 
-`scriptId` (string): The ID of the script tag containing the initial code to be loaded into the editor, not needed for aijs projects.
+`scriptId` (string): The ID of the script tag containing the initial code to be loaded into the editor, not needed for aijs projects. Alternatively, you can pass the entire JS script as a string, this allows you to use multiple editors with the same global vars without causing errors on your main site for redeclaration.
 
 `autoRun` (boolean): Automatically run the code after loading.
 
