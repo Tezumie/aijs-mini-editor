@@ -243,7 +243,7 @@ function draw() {
       <body>
           <div id="output"></div>
           <script>
-              ${this.editor.getValue().replace(/`/g, "\\`")}
+              ${this.editor.getValue()}
           <\/script>
       </body>
       </html>
