@@ -119,3 +119,27 @@
   transition: background-color 0.5s;
   cursor: col-resize;
 }
+
+.mini-editor-container {
+  display: flex;
+  flex-direction: row;
+  width: auto;
+}
+
+@media (max-width: 600px) {
+  .mini-editor-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .output {
+    width: 100%;
+    height: 50%
+  }
+
+  .monaco-editor {
+    width: 100%;
+    height: 50%;
+    border-bottom: 1px solid var(--borderColor);
+  }
+}
