@@ -288,21 +288,38 @@ function draw() {
       return;
     }
 
-    Split([`#${this.containerId}-monaco-editor`, `#${this.containerId}-output`], {
-      sizes: [50, 50],
-      minSize: 100,
-      gutterSize: 5,
-      cursor: "col-resize",
-      onDragEnd: () => {
-        resizeEditor();
-      },
-      onDrag: () => {
-        resizeEditor();
-      },
-    });
+    let splitInstance;
 
-    resizeEditor();
+    const applySplit = () => {
+      const isNarrow = window.innerWidth <= 600;
+
+      if (splitInstance) {
+        // Destroy the previous instance to avoid conflicts
+        splitInstance.destroy();
+      }
+
+      // Apply the new split with appropriate direction
+      splitInstance = Split([`#${this.containerId}-monaco-editor`, `#${this.containerId}-output`], {
+        sizes: [50, 50],
+        minSize: 50,
+        gutterSize: 5,
+        cursor: isNarrow ? "row-resize" : "col-resize",
+        direction: isNarrow ? 'vertical' : 'horizontal',
+        onDragEnd: resizeEditor,
+        onDrag: resizeEditor,
+      });
+
+      resizeEditor();
+    };
+
+    // Apply Split initially
+    applySplit();
+
+    // Listen for resize events to reapply the split logic
+    window.addEventListener('resize', applySplit);
   }
+
+
 }
 
 window.MiniEditor = MiniEditor;
