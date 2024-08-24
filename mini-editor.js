@@ -281,45 +281,54 @@ function draw() {
 
   setupSplit() {
     const resizeEditor = this.resizeEditor.bind(this);
-    const editorElement = document.getElementById(`${this.containerId}-monaco-editor`);
-    const outputElement = document.getElementById(`${this.containerId}-output`);
-    if (!editorElement || !outputElement) {
-      console.error(`Elements with IDs ${this.containerId}-monaco-editor or ${this.containerId}-output not found.`);
-      return;
-    }
-
     let splitInstance;
 
     const applySplit = () => {
-      const isNarrow = window.innerWidth <= 600;
+      const editorElement = document.getElementById(`${this.containerId}-monaco-editor`);
+      const outputElement = document.getElementById(`${this.containerId}-output`);
 
-      if (splitInstance) {
-        // Destroy the previous instance to avoid conflicts
-        splitInstance.destroy();
+      // Check if the elements still exist before proceeding
+      if (!editorElement || !outputElement) {
+        console.warn(`Elements with IDs ${this.containerId}-monaco-editor or ${this.containerId}-output not found. Split.js instance not applied.`);
+        if (splitInstance) {
+          splitInstance.destroy(); // Destroy the existing instance if elements are missing
+          splitInstance = null; // Clear the reference to the destroyed instance
+        }
+        return;
       }
 
-      // Apply the new split with appropriate direction
-      splitInstance = Split([`#${this.containerId}-monaco-editor`, `#${this.containerId}-output`], {
-        sizes: [50, 50],
-        minSize: 50,
-        gutterSize: 5,
-        cursor: isNarrow ? "row-resize" : "col-resize",
-        direction: isNarrow ? 'vertical' : 'horizontal',
-        onDragEnd: resizeEditor,
-        onDrag: resizeEditor,
-      });
+      const isNarrow = window.innerWidth <= 600;
 
-      resizeEditor();
+      // Ensure previous split instance is destroyed
+      if (splitInstance) {
+        splitInstance.destroy(); // Destroy the previous instance to avoid conflicts
+        splitInstance = null; // Clear the reference to the destroyed instance
+      }
+
+      // Slight delay to ensure everything is cleaned up before recreating the split
+      setTimeout(() => {
+        // Apply the new split with appropriate direction
+        splitInstance = Split([`#${this.containerId}-monaco-editor`, `#${this.containerId}-output`], {
+          sizes: [50, 50],
+          minSize: 50,
+          gutterSize: 5,
+          cursor: isNarrow ? "row-resize" : "col-resize",
+          direction: isNarrow ? 'vertical' : 'horizontal',
+          onDragEnd: resizeEditor,
+          onDrag: resizeEditor,
+        });
+
+        resizeEditor();
+      }, 10);
     };
 
     // Apply Split initially
     applySplit();
 
-    // Listen for resize events to reapply the split logic
+    // Clean up event listener to avoid duplicates
+    window.removeEventListener('resize', applySplit);
     window.addEventListener('resize', applySplit);
   }
-
-
 }
 
 window.MiniEditor = MiniEditor;
