@@ -4,7 +4,6 @@ const getScriptContent = (scriptId) => {
   return scriptElement ? scriptElement.innerText.trimStart() : scriptId.trimStart();
 };
 
-
 // Function to generate script tags for dependencies
 const generateScriptTags = (dependencies) => {
   if (!dependencies || dependencies.length === 0) {
@@ -26,7 +25,24 @@ const loadAIJSProject = async (userId, projectName, fileName) => {
 };
 
 class MiniEditor {
-  constructor({ containerId, scriptId, autoRun = false, autoRefresh = true, showStopButton = true, showPlayButton = true, image = '', title = '', dependencies = [], options = {}, debounceDelay = 500, aijsProject = null }) {
+  constructor({
+    containerId,
+    scriptId,
+    autoRun = false,
+    autoRefresh = true,
+    showStopButton = true,
+    showPlayButton = true,
+    image = '',
+    title = '',
+    dependencies = [],
+    dtsDependencies = [],
+    options = {},
+    debounceDelay = 500,
+    aijsProject = null,
+    Q5InstancedMode = false,
+    sizes = [50, 50],
+    canvasWidth = null,
+  }) {
     this.containerId = containerId;
     this.scriptId = scriptId;
     this.autoRun = autoRun;
@@ -36,12 +52,17 @@ class MiniEditor {
     this.image = image;
     this.title = title;
     this.dependencies = dependencies;
+    this.dtsDependencies = dtsDependencies;
     this.options = options;
     this.debounceDelay = debounceDelay;
     this.aijsProject = aijsProject;
     this.editorReady = false;
     this.isRunning = false;
     this.debounceTimeout = null;
+    this.Q5InstancedMode = Q5InstancedMode;
+    this.q5Instance = null;
+    this.sizes = sizes;
+    this.canvasWidth = canvasWidth;
     this.init();
   }
 
@@ -49,38 +70,41 @@ class MiniEditor {
     this.createEditorElements();
 
     if (this.aijsProject) {
-      this.initialCode = await loadAIJSProject(this.aijsProject.userId, this.aijsProject.projectName, this.aijsProject.fileName);
+      this.initialCode = await loadAIJSProject(
+        this.aijsProject.userId,
+        this.aijsProject.projectName,
+        this.aijsProject.fileName
+      );
     } else {
-      this.initialCode = getScriptContent(this.scriptId) || `let aspectRatio = 3 / 4;
-
-function setup() {
-  createCanvas(window.innerWidth, window.innerWidth / aspectRatio);
-  flexibleCanvas(1000);
-}
-
-function draw() {
-  background(220);
-  rect(0, 0, 500);
-}`;
+      this.initialCode = getScriptContent(this.scriptId) || `
+        function setup() {
+          createCanvas(400, 400);
+        }
+        function draw() {
+          background(220);
+          rect(150, 150, 100, 100);
+        }
+      `;
     }
 
-    const editorElement = document.getElementById(`${this.containerId}-monaco-editor`);
-    const outputElement = document.getElementById(`${this.containerId}-output`);
-    if (!editorElement || !outputElement) {
-      console.error(`Elements with IDs ${this.containerId}-monaco-editor or ${this.containerId}-output not found.`);
+    try {
+      await this.loadScript('https://q5js.org/q5.js');
+    } catch (error) {
+      console.error('Failed to load Q5.js:', error);
       return;
     }
+
     await this.initializeEditor();
     this.setupSplit();
     this.updateButtonStates();
+
     const playButton = document.getElementById(`${this.containerId}-playButton`);
     const stopButton = document.getElementById(`${this.containerId}-stopButton`);
+
     if (playButton) playButton.addEventListener('click', () => this.runCode());
     if (stopButton) stopButton.addEventListener('click', () => this.stopCode());
 
-    if (this.autoRun) {
-      this.runCode();
-    }
+    if (this.autoRun) this.runCode();
 
     if (this.autoRefresh) {
       this.editor.onDidChangeModelContent(() => {
@@ -92,8 +116,9 @@ function draw() {
     }
 
     this.resizeEditor();
-    window.addEventListener("resize", this.resizeEditor.bind(this));
+    window.addEventListener('resize', this.resizeEditor.bind(this));
   }
+
 
   createEditorElements() {
     const container = document.getElementById(this.containerId);
@@ -156,10 +181,9 @@ function draw() {
     monacoEditor.id = `${this.containerId}-monaco-editor`;
     monacoEditor.className = 'monaco-editor';
 
-    const output = document.createElement('iframe');
+    const output = document.createElement('div');
     output.id = `${this.containerId}-output`;
     output.className = 'output';
-    output.setAttribute('sandbox', 'allow-scripts allow-same-origin');
 
     editorContainer.appendChild(monacoEditor);
     editorContainer.appendChild(output);
@@ -171,39 +195,52 @@ function draw() {
   async initializeEditor() {
     return new Promise((resolve) => {
       require.config({
-        paths: { vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs" },
+        paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs' },
       });
-      require(["vs/editor/editor.main"], async () => {
-        this.editor = monaco.editor.create(document.getElementById(`${this.containerId}-monaco-editor`), {
-          value: this.initialCode,
-          language: "javascript",
-          theme: this.options.theme || "vs-dark",
-          fontSize: this.options.fontSize || 14,
-          lineNumbersMinChars: this.options.lineNumbersMinChars || 2,
-          glyphMargin: this.options.glyphMargin !== undefined ? this.options.glyphMargin : false,
-          minimap: this.options.minimap || { enabled: false },
-          scrollbar: this.options.scrollbar || {
-            verticalScrollbarSize: 8,
-            horizontalScrollbarSize: 8
+
+      require(['vs/editor/editor.main'], async () => {
+        this.editor = monaco.editor.create(
+          document.getElementById(`${this.containerId}-monaco-editor`),
+          {
+            value: this.initialCode,
+            language: 'javascript',
+            automaticLayout: this.options.automaticLayout ?? false,
+            wordWrap: this.options.wordWrap ?? 'off',
+            wrappingIndent: this.options.wrappingIndent || 'none',
+            theme: this.options.theme || 'vs-dark',
+            fontSize: this.options.fontSize || 14,
+            lineNumbersMinChars: this.options.lineNumbersMinChars || 2,
+            glyphMargin: this.options.glyphMargin ?? false,
+            minimap: this.options.minimap || { enabled: false },
+            scrollbar: this.options.scrollbar || {
+              verticalScrollbarSize: 8,
+              horizontalScrollbarSize: 8,
+            },
           }
-        });
+        );
 
         this.editorReady = true;
 
-        try {
-          const response = await fetch('p5play.d.ts');
-          const dtsText = await response.text();
-          monaco.languages.typescript.javascriptDefaults.addExtraLib(
-            dtsText,
-            'file:///p5play.d.ts'
-          );
-        } catch (error) {
-          console.error('Error loading p5play.d.ts:', error);
+        // Load optional .d.ts dependencies
+        for (const dtsFile of this.dtsDependencies) {
+          try {
+            const response = await fetch(dtsFile);
+            if (response.ok) {
+              const dtsText = await response.text();
+              monaco.languages.typescript.javascriptDefaults.addExtraLib(dtsText, dtsFile);
+            } else {
+              console.warn(`Failed to load ${dtsFile}: ${response.statusText}`);
+            }
+          } catch (error) {
+            console.error(`Error loading ${dtsFile}:`, error);
+          }
         }
+
         resolve();
       });
     });
   }
+
 
   runCode() {
     if (!this.editorReady) {
@@ -212,8 +249,18 @@ function draw() {
     }
     this.isRunning = true;
     this.updateButtonStates();
-    const scripts = generateScriptTags(this.dependencies);
-    const html = `
+
+    if (this.Q5InstancedMode) {
+      if (typeof Q5 === 'undefined') {
+        this.loadScript('https://q5js.org/q5.js', () => {
+          this.runQ5InstanceCode();
+        });
+      } else {
+        this.runQ5InstanceCode();
+      }
+    } else {
+      const scripts = generateScriptTags(this.dependencies);
+      const html = `
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -248,16 +295,89 @@ function draw() {
       </body>
       </html>
     `;
-    const iframe = document.getElementById(`${this.containerId}-output`);
-    iframe.srcdoc = html;
+      const outputElement = document.getElementById(`${this.containerId}-output`);
+      outputElement.innerHTML = '';
+
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+
+      outputElement.appendChild(iframe);
+
+      iframe.srcdoc = html;
+    }
+  }
+  loadScript(src) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`Failed to load script ${src}`));
+      document.head.appendChild(script);
+    });
+  }
+
+  runQ5InstanceCode() {
+    const outputElement = document.getElementById(`${this.containerId}-output`);
+    outputElement.innerHTML = '';
+
+    const q5FunctionNames = [
+      'preload', 'setup', 'draw', 'doubleClicked',
+      'keyPressed', 'keyReleased', 'keyTyped',
+      'mouseMoved', 'mouseDragged', 'mousePressed',
+      'mouseReleased', 'mouseClicked', 'touchStarted',
+      'touchMoved', 'touchEnded', 'windowResized'
+    ];
+
+    let q = new Q5('instance', outputElement);
+
+    try {
+      let userCode = this.editor.getValue();
+
+      for (let f of q5FunctionNames) {
+        const regex = new RegExp(`function\\s+${f}\\s*\\(`, 'g');
+        userCode = userCode.replace(regex, `q.${f} = function(`);
+      }
+
+      const func = new Function('q', `
+          with (q) {
+              ${userCode}
+          }
+      `);
+
+      func(q);
+    } catch (e) {
+      console.error('Error executing user code:', e);
+    }
+
+    this.q5Instance = q;
   }
 
   stopCode() {
     this.isRunning = false;
     this.updateButtonStates();
     clearTimeout(this.debounceTimeout);
-    const iframe = document.getElementById(`${this.containerId}-output`);
-    iframe.srcdoc = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body></body></html>";
+
+    if (this.Q5InstancedMode) {
+      // Stop the Q5 instance
+      if (this.q5Instance) {
+        if (typeof this.q5Instance.remove === 'function') {
+          this.q5Instance.remove();
+        }
+        this.q5Instance = null;
+      }
+      const outputElement = document.getElementById(`${this.containerId}-output`);
+      outputElement.innerHTML = '';
+    } else {
+      // Original code
+      const outputElement = document.getElementById(`${this.containerId}-output`);
+      outputElement.innerHTML = '';
+    }
   }
 
   updateButtonStates() {
@@ -285,45 +405,74 @@ function draw() {
     const applySplit = () => {
       const editorElement = document.getElementById(`${this.containerId}-monaco-editor`);
       const outputElement = document.getElementById(`${this.containerId}-output`);
+      const containerElement = document.getElementById(this.containerId);
 
-      // Check if the elements still exist before proceeding
-      if (!editorElement || !outputElement) {
-        console.warn(`Elements with IDs ${this.containerId}-monaco-editor or ${this.containerId}-output not found. Split.js instance not applied.`);
+      if (!editorElement || !outputElement || !containerElement) {
+        console.warn(`Elements with IDs ${this.containerId}-monaco-editor, ${this.containerId}-output, or ${this.containerId} not found.`);
         if (splitInstance) {
-          splitInstance.destroy(); // Destroy the existing instance if elements are missing
-          splitInstance = null; // Clear the reference to the destroyed instance
+          splitInstance.destroy();
+          splitInstance = null;
         }
         return;
       }
 
       const isNarrow = window.innerWidth <= 600;
 
-      // Destroy any existing split instance before creating a new one
+      // Destroy any existing Split.js instance
       if (splitInstance) {
         splitInstance.destroy();
       }
 
-      // Apply the new split with appropriate direction
-      splitInstance = Split([`#${this.containerId}-monaco-editor`, `#${this.containerId}-output`], {
-        sizes: [50, 50],
-        minSize: 50,
-        gutterSize: 5,
-        cursor: isNarrow ? "row-resize" : "col-resize",
-        direction: isNarrow ? 'vertical' : 'horizontal',
-        onDragEnd: resizeEditor,
-        onDrag: resizeEditor,
-      });
+      // Reset styles to default before applying new split
+      editorElement.style.width = '';
+      editorElement.style.flex = '';
+      outputElement.style.width = '';
+      outputElement.style.flex = '';
+
+      let sizes = this.sizes;
+      let minSizes = [50, 50]; // Minimum sizes in pixels
+
+      if (this.canvasWidth !== null) {
+        // Parse canvasWidth to a number
+        const parsedCanvasWidth = typeof this.canvasWidth === 'string' && this.canvasWidth.endsWith('px')
+          ? parseInt(this.canvasWidth, 10)
+          : this.canvasWidth;
+
+        // Get container width or height based on layout direction
+        const containerSize = isNarrow ? containerElement.clientHeight : containerElement.clientWidth;
+
+        // Calculate sizes as percentages
+        const outputSizePercent = (parsedCanvasWidth / containerSize) * 100;
+        const editorSizePercent = 100 - outputSizePercent;
+        sizes = [editorSizePercent, outputSizePercent];
+
+        // Set minimum sizes to prevent canvas from shrinking below its width
+        minSizes = [50, 50];
+      }
+
+      // Initialize Split.js with calculated sizes
+      splitInstance = Split(
+        [`#${this.containerId}-monaco-editor`, `#${this.containerId}-output`],
+        {
+          sizes: sizes,
+          minSize: minSizes,
+          gutterSize: 5,
+          cursor: isNarrow ? 'row-resize' : 'col-resize',
+          direction: isNarrow ? 'vertical' : 'horizontal',
+          onDragEnd: resizeEditor,
+          onDrag: resizeEditor,
+        }
+      );
 
       resizeEditor();
     };
 
-    // Apply Split initially
     applySplit();
-
-    // Clean up event listener to avoid duplicates
     window.removeEventListener('resize', applySplit);
     window.addEventListener('resize', applySplit);
   }
+
+
 
 }
 
