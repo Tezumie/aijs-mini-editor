@@ -41,7 +41,7 @@ class MiniEditor {
     aijsProject = null,
     Q5InstancedMode = false,
     sizes = [50, 50],
-    canvasWidth = null, 
+    canvasWidth = null,
   }) {
     this.containerId = containerId;
     this.scriptId = scriptId;
@@ -62,7 +62,7 @@ class MiniEditor {
     this.Q5InstancedMode = Q5InstancedMode;
     this.q5Instance = null;
     this.sizes = sizes;
-    this.canvasWidth = canvasWidth; 
+    this.canvasWidth = canvasWidth;
     this.init();
   }
 
@@ -359,7 +359,6 @@ class MiniEditor {
     });
   }
 
-
   runQ5InstanceCode() {
     const outputElement = document.getElementById(`${this.containerId}-output`);
     outputElement.innerHTML = '';
@@ -375,37 +374,30 @@ class MiniEditor {
     try {
       let userCode = this.editor.getValue();
 
-      // Check if the user's code already creates a Q5 instance
-      const q5InstanceRegex = /new\s+Q5\s*\(/;
-      const userHasQ5Instance = q5InstanceRegex.test(userCode);
+      // Create a controlled Q5 instance for AIJS
+      let q = new Q5('instance', outputElement);
 
-      // If user defines their own Q5 instance, skip creating another one
-      let q = userHasQ5Instance ? null : new Q5('instance', outputElement);
-
-      // If no Q5 instance was found in the user's code, bind functions to our instance
-      if (!userHasQ5Instance) {
-        for (let f of q5FunctionNames) {
-          const regex = new RegExp(`function\\s+${f}\\s*\\(`, 'g');
-          userCode = userCode.replace(regex, `q.${f} = function(`);
-        }
+      // Redirect any function definitions to the AIJS Q5 instance
+      for (let f of q5FunctionNames) {
+        const regex = new RegExp(`function\\s+${f}\\s*\\(`, 'g');
+        userCode = userCode.replace(regex, `q.${f} = function(`);
       }
 
-      // Wrap the user's code in a function and execute it
+      // Wrap the user's code in a function and execute it within our Q5 instance
       const func = new Function('q', `
-      ${userHasQ5Instance ? '' : 'with (q) {'}
+      with (q) {
         ${userCode}
-      ${userHasQ5Instance ? '' : '}'}
+      }
     `);
 
-      func(q); // Execute the function, passing our Q5 instance or null
+      func(q); // Execute the user's code within the AIJS Q5 instance
 
-      // Store the Q5 instance for later use if we created one
-      this.q5Instance = q || null;
+      // Store the instance for later use
+      this.q5Instance = q;
     } catch (e) {
       console.error('Error executing user code:', e);
     }
   }
-
 
   stopCode() {
     this.isRunning = false;
