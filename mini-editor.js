@@ -41,7 +41,7 @@ class MiniEditor {
     aijsProject = null,
     Q5InstancedMode = false,
     sizes = [50, 50],
-    canvasWidth = null,
+    canvasWidth = null, 
   }) {
     this.containerId = containerId;
     this.scriptId = scriptId;
@@ -62,7 +62,7 @@ class MiniEditor {
     this.Q5InstancedMode = Q5InstancedMode;
     this.q5Instance = null;
     this.sizes = sizes;
-    this.canvasWidth = canvasWidth;
+    this.canvasWidth = canvasWidth; 
     this.init();
   }
 
@@ -85,6 +85,10 @@ class MiniEditor {
           rect(150, 150, 100, 100);
         }
       `;
+    }
+
+    if (this.canvasWidth === 'auto') {
+      this.canvasWidth = this.detectCanvasWidth(this.initialCode);
     }
 
     try {
@@ -117,6 +121,21 @@ class MiniEditor {
 
     this.resizeEditor();
     window.addEventListener('resize', this.resizeEditor.bind(this));
+  }
+
+  // New: Detect canvas width from the code
+  detectCanvasWidth(code) {
+    const canvasRegex = /createCanvas\((\d+),\s*(\d+)\)/;
+    const match = canvasRegex.exec(code);
+
+    if (match) {
+      const width = parseInt(match[1], 10);
+      //console.log(`Detected canvas width: ${width}px`);
+      return width; // Return detected width
+    } else {
+      //console.warn('No createCanvas() found. Using default width.');
+      return 400; // Default width if not found
+    }
   }
 
 
@@ -216,6 +235,8 @@ class MiniEditor {
               verticalScrollbarSize: 8,
               horizontalScrollbarSize: 8,
             },
+            scrollBeyondLastLine: this.options.scrollBeyondLastLine || false,
+            tabSize: this.options.tabSize || 2,
           }
         );
 
@@ -308,19 +329,36 @@ class MiniEditor {
       iframe.srcdoc = html;
     }
   }
+
   loadScript(src) {
     return new Promise((resolve, reject) => {
+      // Check if Q5 is already defined
+      if (window.Q5) {
+        //console.log('Q5 is already defined, skipping script load.');
+        resolve(); // Resolve immediately since Q5 is already present
+        return;
+      }
+
+      // If not already loaded, check if the script exists in the DOM
       if (document.querySelector(`script[src="${src}"]`)) {
+        //console.log('Q5.js already loaded via script tag.');
         resolve();
         return;
       }
+
+      // Load the script dynamically if not already present
       const script = document.createElement('script');
       script.src = src;
-      script.onload = resolve;
+      script.onload = () => {
+        //console.log('Q5.js loaded successfully.');
+        resolve();
+      };
       script.onerror = () => reject(new Error(`Failed to load script ${src}`));
+
       document.head.appendChild(script);
     });
   }
+
 
   runQ5InstanceCode() {
     const outputElement = document.getElementById(`${this.containerId}-output`);
@@ -334,29 +372,40 @@ class MiniEditor {
       'touchMoved', 'touchEnded', 'windowResized'
     ];
 
-    let q = new Q5('instance', outputElement);
-
     try {
       let userCode = this.editor.getValue();
 
-      for (let f of q5FunctionNames) {
-        const regex = new RegExp(`function\\s+${f}\\s*\\(`, 'g');
-        userCode = userCode.replace(regex, `q.${f} = function(`);
+      // Check if the user's code already creates a Q5 instance
+      const q5InstanceRegex = /new\s+Q5\s*\(/;
+      const userHasQ5Instance = q5InstanceRegex.test(userCode);
+
+      // If user defines their own Q5 instance, skip creating another one
+      let q = userHasQ5Instance ? null : new Q5('instance', outputElement);
+
+      // If no Q5 instance was found in the user's code, bind functions to our instance
+      if (!userHasQ5Instance) {
+        for (let f of q5FunctionNames) {
+          const regex = new RegExp(`function\\s+${f}\\s*\\(`, 'g');
+          userCode = userCode.replace(regex, `q.${f} = function(`);
+        }
       }
 
+      // Wrap the user's code in a function and execute it
       const func = new Function('q', `
-          with (q) {
-              ${userCode}
-          }
-      `);
+      ${userHasQ5Instance ? '' : 'with (q) {'}
+        ${userCode}
+      ${userHasQ5Instance ? '' : '}'}
+    `);
 
-      func(q);
+      func(q); // Execute the function, passing our Q5 instance or null
+
+      // Store the Q5 instance for later use if we created one
+      this.q5Instance = q || null;
     } catch (e) {
       console.error('Error executing user code:', e);
     }
-
-    this.q5Instance = q;
   }
+
 
   stopCode() {
     this.isRunning = false;
