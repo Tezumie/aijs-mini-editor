@@ -42,11 +42,11 @@ function draw() {
   <div id="editor2" class="editor-container">
     <script type="text/javascript" id="script2">
       function setup() {
-  createCanvas(400, 400);
+  createCanvas(200, 200);
 }
 function draw() {
   background(0);
-  ellipse(200, 200, 100, 100);
+  ellipse(100, 100, 100, 100);
 }
     </script>
   </div>
@@ -64,15 +64,17 @@ function draw() {
             wordWrap: 'on', 
             wordWrapColumn: 0, 
             wrappingIndent: 'same', 
+            tabSize: 2,
             minimap: {
                 enabled: false
             },
-        scrollbar: {
-                verticalScrollbarSize: 0,
-                vertical: 'hidden',  
-                horizontal: 'hidden', 
-                handleMouseWheel: false 
+            scrollbar: {
+                verticalScrollbarSize: 8,
+                vertical: 'auto',  
+                horizontal: 'auto', 
+                handleMouseWheel: true 
             },
+            scrollBeyondLastLine: false,
         }
       });
 
@@ -82,7 +84,7 @@ function draw() {
         scriptId: 'script2',
         autoRun: true,
         title: 'Circle',
-        canvasWidth: 200
+        canvasWidth: 'auto'
       });
     });
   </script>
