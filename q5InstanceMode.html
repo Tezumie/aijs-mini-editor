@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Editor Example</title>
+  <link rel="stylesheet" href="mini-editor.css">
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+    }
+
+    .editor-container {
+      border: 1px solid #3c3d3e;
+      margin: 5px;
+      padding: 0;
+      height: 400px;
+      overflow: hidden;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.2/split.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js"></script>
+  <script src="mini-editor.js"></script>
+</head>
+
+<body>
+  <div id="editor1" class="editor-container">
+    <script type="text/javascript" id="script1">
+      function setup() {
+  createCanvas(400, 400);
+}
+function draw() {
+  background(220);
+  rect(150, 150, 100, 100);
+}
+    </script>
+  </div>
+
+  <div id="editor2" class="editor-container">
+    <script type="text/javascript" id="script2">
+      function setup() {
+  createCanvas(400, 400);
+}
+function draw() {
+  background(0);
+  ellipse(200, 200, 100, 100);
+}
+    </script>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      new MiniEditor({
+        Q5InstancedMode: true,
+        containerId: 'editor1',
+        scriptId: 'script1',
+        autoRun: true,
+        title: 'Square',
+        sizes: [30, 70],
+        options: {
+            wordWrap: 'on', 
+            wordWrapColumn: 0, 
+            wrappingIndent: 'same', 
+            minimap: {
+                enabled: false
+            },
+        scrollbar: {
+                verticalScrollbarSize: 0,
+                vertical: 'hidden',  
+                horizontal: 'hidden', 
+                handleMouseWheel: false 
+            },
+        }
+      });
+
+      new MiniEditor({
+        Q5InstancedMode: true,
+        containerId: 'editor2',
+        scriptId: 'script2',
+        autoRun: true,
+        title: 'Circle',
+        canvasWidth: 200
+      });
+    });
+  </script>
+</body>
+
+</html>
