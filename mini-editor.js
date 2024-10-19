@@ -34,7 +34,7 @@ class MiniEditor {
     showPlayButton = true,
     image = '',
     title = '',
-    dependencies = [],
+    dependencies = ['https://q5js.org/q5.js'],
     dtsDependencies = [],
     options = {},
     debounceDelay = 500,
@@ -90,14 +90,14 @@ class MiniEditor {
     if (this.canvasWidth === 'auto') {
       this.canvasWidth = this.detectCanvasWidth(this.initialCode);
     }
-
-    try {
-      await this.loadScript('https://q5js.org/q5.js');
-    } catch (error) {
-      console.error('Failed to load Q5.js:', error);
-      return;
+    if (this.Q5InstancedMode) {
+      try {
+        await this.loadScript(this.dependencies);
+      } catch (error) {
+        console.error('Failed to load Q5.js:', error);
+        return;
+      }
     }
-
     await this.initializeEditor();
     this.setupSplit();
     this.updateButtonStates();
@@ -273,7 +273,7 @@ class MiniEditor {
 
     if (this.Q5InstancedMode) {
       if (typeof Q5 === 'undefined') {
-        this.loadScript('https://q5js.org/q5.js', () => {
+        this.loadScript(this.dependencies, () => {
           this.runQ5InstanceCode();
         });
       } else {
@@ -359,45 +359,45 @@ class MiniEditor {
     });
   }
 
-  runQ5InstanceCode() {
-    const outputElement = document.getElementById(`${this.containerId}-output`);
-    outputElement.innerHTML = '';
+runQ5InstanceCode() {
+  const outputElement = document.getElementById(`${this.containerId}-output`);
+  outputElement.innerHTML = '';
 
-    const q5FunctionNames = [
-      'preload', 'setup', 'draw', 'doubleClicked',
-      'keyPressed', 'keyReleased', 'keyTyped',
-      'mouseMoved', 'mouseDragged', 'mousePressed',
-      'mouseReleased', 'mouseClicked', 'touchStarted',
-      'touchMoved', 'touchEnded', 'windowResized'
-    ];
+  const q5FunctionNames = [
+    'preload', 'setup', 'draw', 'doubleClicked',
+    'keyPressed', 'keyReleased', 'keyTyped',
+    'mouseMoved', 'mouseDragged', 'mousePressed',
+    'mouseReleased', 'mouseClicked', 'touchStarted',
+    'touchMoved', 'touchEnded', 'windowResized'
+  ];
 
-    try {
-      let userCode = this.editor.getValue();
+  try {
+    let userCode = this.editor.getValue();
 
-      // Create a controlled Q5 instance for AIJS
-      let q = new Q5('instance', outputElement);
+    const q5InstanceRegex = /new\s+Q5\s*\([^)]*\);?/g;
+    userCode = userCode.replace(q5InstanceRegex, '');
 
-      // Redirect any function definitions to the AIJS Q5 instance
-      for (let f of q5FunctionNames) {
-        const regex = new RegExp(`function\\s+${f}\\s*\\(`, 'g');
-        userCode = userCode.replace(regex, `q.${f} = function(`);
-      }
+    let q = new Q5('instance', outputElement);
 
-      // Wrap the user's code in a function and execute it within our Q5 instance
-      const func = new Function('q', `
+    for (let f of q5FunctionNames) {
+      const regex = new RegExp(`function\\s+${f}\\s*\\(`, 'g');
+      userCode = userCode.replace(regex, `q.${f} = function(`);
+    }
+
+    const func = new Function('q', `
       with (q) {
         ${userCode}
       }
     `);
 
-      func(q); // Execute the user's code within the AIJS Q5 instance
+    func(q); 
 
-      // Store the instance for later use
-      this.q5Instance = q;
-    } catch (e) {
-      console.error('Error executing user code:', e);
-    }
+    this.q5Instance = q;
+  } catch (e) {
+    console.error('Error executing user code:', e);
   }
+}
+
 
   stopCode() {
     this.isRunning = false;
@@ -405,7 +405,6 @@ class MiniEditor {
     clearTimeout(this.debounceTimeout);
 
     if (this.Q5InstancedMode) {
-      // Stop the Q5 instance
       if (this.q5Instance) {
         if (typeof this.q5Instance.remove === 'function') {
           this.q5Instance.remove();
