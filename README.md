@@ -79,7 +79,7 @@ You can also add a script tag for your javascript directly within the editor con
 - `glyphMargin` (boolean): Show or hide the glyph margin.
 - `minimap` (object): Configuration for the minimap.
 
-*You can use **all** monaco editor options, these are just a few examples.*
+*You can use **other** monaco editor options, these are just a few examples.*
 
 ## Usage
 
