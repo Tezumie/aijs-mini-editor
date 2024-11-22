@@ -156,7 +156,7 @@ class MiniEditor {
       outputElement.style.height = `${outputHeight}px`;
     } else {
       // In horizontal layout, set both editor and output to use full container height
-      container.style.height = `${Math.max(editorHeight, 400)}px`;
+      container.style.height = `${Math.max(editorHeight, 200)}px`;
       monacoEditor.style.height = `100%`;
       outputElement.style.height = `100%`;
     }
