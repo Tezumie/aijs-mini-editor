@@ -42,6 +42,7 @@ class MiniEditor {
     Q5InstancedMode = false,
     sizes = [50, 50],
     canvasWidth = null,
+    scaleContainer = false
   }) {
     this.containerId = containerId;
     this.scriptId = scriptId;
@@ -63,6 +64,7 @@ class MiniEditor {
     this.q5Instance = null;
     this.sizes = sizes;
     this.canvasWidth = canvasWidth;
+    this.scaleContainer = scaleContainer; // Store the new option
     this.init();
   }
 
@@ -101,7 +103,9 @@ class MiniEditor {
     await this.initializeEditor();
     this.setupSplit();
     this.updateButtonStates();
-
+    if (this.scaleContainer) {
+      this.adjustContainerHeight();
+    }
     const playButton = document.getElementById(`${this.containerId}-playButton`);
     const stopButton = document.getElementById(`${this.containerId}-stopButton`);
 
@@ -116,12 +120,51 @@ class MiniEditor {
           clearTimeout(this.debounceTimeout);
           this.debounceTimeout = setTimeout(() => this.runCode(), this.debounceDelay);
         }
+        // Adjust height whenever content changes
+        if (this.scaleContainer) {
+          this.adjustContainerHeight();
+        }
       });
     }
 
     this.resizeEditor();
     window.addEventListener('resize', this.resizeEditor.bind(this));
   }
+  adjustContainerHeight() {
+    const container = document.getElementById(this.containerId);
+    const monacoEditor = document.getElementById(`${this.containerId}-monaco-editor`);
+    const outputElement = document.getElementById(`${this.containerId}-output`);
+
+    if (!container || !this.editor || !monacoEditor || !outputElement) return;
+
+    // Calculate editor height based on line count
+    const lineCount = this.editor.getModel().getLineCount();
+    const lineHeight = this.editor.getOption(monaco.editor.EditorOption.lineHeight);
+    const editorHeight = (lineCount * lineHeight)+lineHeight*3;
+
+    // Set output element minimum height if not already set
+    outputElement.style.minHeight = '200px';
+
+    // Check the layout direction and adjust heights accordingly
+    const isVertical = window.innerWidth <= 600;
+
+    if (isVertical) {
+      // In vertical layout, stack editor and output, summing their heights
+      const outputHeight = outputElement.scrollHeight || 200; // Fallback if scrollHeight is 0
+      container.style.height = `${editorHeight + outputHeight}px`;
+      monacoEditor.style.height = `${editorHeight}px`;
+      outputElement.style.height = `${outputHeight}px`;
+    } else {
+      // In horizontal layout, set both editor and output to use full container height
+      container.style.height = `${Math.max(editorHeight, 400)}px`;
+      monacoEditor.style.height = `100%`;
+      outputElement.style.height = `100%`;
+    }
+
+    // Refresh editor layout
+    this.resizeEditor();
+  }
+
 
   // New: Detect canvas width from the code
   detectCanvasWidth(code) {
@@ -359,44 +402,44 @@ class MiniEditor {
     });
   }
 
-runQ5InstanceCode() {
-  const outputElement = document.getElementById(`${this.containerId}-output`);
-  outputElement.innerHTML = '';
+  runQ5InstanceCode() {
+    const outputElement = document.getElementById(`${this.containerId}-output`);
+    outputElement.innerHTML = '';
 
-  const q5FunctionNames = [
-    'preload', 'setup', 'draw', 'doubleClicked',
-    'keyPressed', 'keyReleased', 'keyTyped',
-    'mouseMoved', 'mouseDragged', 'mousePressed',
-    'mouseReleased', 'mouseClicked', 'touchStarted',
-    'touchMoved', 'touchEnded', 'windowResized'
-  ];
+    const q5FunctionNames = [
+      'preload', 'setup', 'draw', 'doubleClicked',
+      'keyPressed', 'keyReleased', 'keyTyped',
+      'mouseMoved', 'mouseDragged', 'mousePressed',
+      'mouseReleased', 'mouseClicked', 'touchStarted',
+      'touchMoved', 'touchEnded', 'windowResized'
+    ];
 
-  try {
-    let userCode = this.editor.getValue();
+    try {
+      let userCode = this.editor.getValue();
 
-    const q5InstanceRegex = /new\s+Q5\s*\([^)]*\);?/g;
-    userCode = userCode.replace(q5InstanceRegex, '');
+      const q5InstanceRegex = /new\s+Q5\s*\([^)]*\);?/g;
+      userCode = userCode.replace(q5InstanceRegex, '');
 
-    let q = new Q5('instance', outputElement);
+      let q = new Q5('instance', outputElement);
 
-    for (let f of q5FunctionNames) {
-      const regex = new RegExp(`function\\s+${f}\\s*\\(`, 'g');
-      userCode = userCode.replace(regex, `q.${f} = function(`);
-    }
+      for (let f of q5FunctionNames) {
+        const regex = new RegExp(`function\\s+${f}\\s*\\(`, 'g');
+        userCode = userCode.replace(regex, `q.${f} = function(`);
+      }
 
-    const func = new Function('q', `
+      const func = new Function('q', `
       with (q) {
         ${userCode}
       }
     `);
 
-    func(q); 
+      func(q);
 
-    this.q5Instance = q;
-  } catch (e) {
-    console.error('Error executing user code:', e);
+      this.q5Instance = q;
+    } catch (e) {
+      console.error('Error executing user code:', e);
+    }
   }
-}
 
 
   stopCode() {
@@ -503,8 +546,9 @@ runQ5InstanceCode() {
           onDrag: resizeEditor,
         }
       );
-
+      if (this.scaleContainer) this.adjustContainerHeight();
       resizeEditor();
+
     };
 
     applySplit();
