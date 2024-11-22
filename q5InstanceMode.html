@@ -29,12 +29,34 @@
 <body>
   <div id="editor1" class="editor-container">
     <script type="text/javascript" id="script1">
-      function setup() {
-  createCanvas(400, 400);
+function setup() {
+    createCanvas(800, 800);
+    noLoop();
 }
+
 function draw() {
-  background(220);
-  rect(150, 150, 100, 100);
+    drawRecursiveRects(0, 0, width, height, 7);
+}
+
+function drawRecursiveRects(x, y, w, h, depth) {
+    if (depth === 0 || w < 5 || h < 5) return; //  minimum size check
+    fill(random(50, 255), random(50, 255), random(50, 255));
+    rect(x, y, w, h);
+    let subdivisions = floor(random(1, 4)); // Random number of subdivisions for each
+    let split = random(1) > 0.5;
+    if (split) {
+        // Split width
+        let sectionWidth = w / subdivisions;
+        for (let i = 0; i < subdivisions; i++) {
+            drawRecursiveRects(x + i * sectionWidth, y, sectionWidth, h, depth - 1);
+        }
+    } else {
+        // Split height
+        let sectionHeight = h / subdivisions;
+        for (let i = 0; i < subdivisions; i++) {
+            drawRecursiveRects(x, y + i * sectionHeight, w, sectionHeight, depth - 1);
+        }
+    }
 }
     </script>
   </div>
@@ -59,9 +81,10 @@ function draw() {
         scriptId: 'script1',
         autoRun: true,
         title: 'Square',
-        sizes: [30, 70],
+        canvasWidth: 200,
+        scaleContainer: true,
         options: {
-            wordWrap: 'on', 
+            // wordWrap: 'on', 
             wordWrapColumn: 0, 
             wrappingIndent: 'same', 
             tabSize: 2,
